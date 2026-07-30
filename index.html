@@ -329,6 +329,16 @@
     margin-bottom:3px;
   }
   .comment-item .text{ font-size:0.9rem; }
+  .comment-delete{
+    background:none; border:none;
+    font-family:"IBM Plex Mono",monospace;
+    font-size:0.65rem;
+    color:var(--coral);
+    text-decoration:underline;
+    cursor:pointer;
+    padding:0;
+    margin-top:5px;
+  }
   .comment-empty{
     font-family:"IBM Plex Mono",monospace;
     font-size:0.75rem;
@@ -766,7 +776,7 @@ async function addDayComment(key, text){
     await saveWithRetry(latest => {
       const days = { ...latest.comments.days };
       const list = days[key] ? [...days[key]] : [];
-      list.push({ name, text: text.trim(), ts: Date.now() });
+      list.push({ id: commentId(), name, text: text.trim(), ts: Date.now() });
       days[key] = list;
       return { entries: latest.entries, comments: { days, general: latest.comments.general } };
     });
@@ -776,6 +786,20 @@ async function addDayComment(key, text){
   } catch(e){ console.error(e); showStatus("save failed — check connection"); }
 }
 
+async function deleteDayComment(key, id){
+  try{
+    await saveWithRetry(latest => {
+      const days = { ...latest.comments.days };
+      const list = (days[key] || []).filter(c => c.id !== id);
+      if (list.length) days[key] = list; else delete days[key];
+      return { entries: latest.entries, comments: { days, general: latest.comments.general } };
+    });
+    renderDayModal(key);
+    render();
+    showStatus("comment deleted");
+  } catch(e){ console.error(e); showStatus("delete failed — check connection"); }
+}
+
 async function addGeneralComment(text){
   const name = (document.getElementById("myName").value || "").trim();
   if (!name){ showStatus("enter your name first"); document.getElementById("myName").focus(); return; }
@@ -783,12 +807,27 @@ async function addGeneralComment(text){
   localStorage.setItem("eu_myname", name);
   try{
     await saveWithRetry(latest => {
-      const general = [...latest.comments.general, { name, text: text.trim(), ts: Date.now() }];
+      const general = [...latest.comments.general, { id: commentId(), name, text: text.trim(), ts: Date.now() }];
       return { entries: latest.entries, comments: { days: latest.comments.days, general } };
     });
     renderGeneralComments();
     showStatus("comment added");
   } catch(e){ console.error(e); showStatus("save failed — check connection"); }
+}
+
+async function deleteGeneralComment(id){
+  try{
+    await saveWithRetry(latest => {
+      const general = latest.comments.general.filter(c => c.id !== id);
+      return { entries: latest.entries, comments: { days: latest.comments.days, general } };
+    });
+    renderGeneralComments();
+    showStatus("comment deleted");
+  } catch(e){ console.error(e); showStatus("delete failed — check connection"); }
+}
+
+function commentId(){
+  return (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`);
 }
 
 let modalDayKey = null;
@@ -797,7 +836,7 @@ function fmtTs(ts){
   return new Date(ts).toLocaleString(undefined, { month:"short", day:"numeric", hour:"numeric", minute:"2-digit" });
 }
 
-function commentItemHtml(c){
+function commentItemHtml(c, onDelete){
   const div = document.createElement("div");
   div.className = "comment-item";
   const who = document.createElement("div");
@@ -806,7 +845,13 @@ function commentItemHtml(c){
   const text = document.createElement("div");
   text.className = "text";
   text.textContent = c.text;
-  div.appendChild(who); div.appendChild(text);
+  const del = document.createElement("button");
+  del.className = "comment-delete";
+  del.textContent = "delete";
+  del.addEventListener("click", ()=>{
+    if (confirm("Delete this comment?")) onDelete();
+  });
+  div.appendChild(who); div.appendChild(text); div.appendChild(del);
   return div;
 }
 
@@ -829,7 +874,7 @@ function renderDayModal(key){
     empty.textContent = "No comments yet.";
     list.appendChild(empty);
   } else {
-    comments.forEach(c => list.appendChild(commentItemHtml(c)));
+    comments.forEach(c => list.appendChild(commentItemHtml(c, ()=>deleteDayComment(key, c.id))));
   }
 }
 
@@ -848,7 +893,7 @@ function renderGeneralComments(){
     empty.textContent = "No comments yet.";
     list.appendChild(empty);
   } else {
-    comments.forEach(c => list.appendChild(commentItemHtml(c)));
+    comments.forEach(c => list.appendChild(commentItemHtml(c, ()=>deleteGeneralComment(c.id))));
   }
 }
 function dateKey(y,m,d){
@@ -938,6 +983,18 @@ document.getElementById("dayCommentBtn").addEventListener("click", ()=>{
   const ta = document.getElementById("dayCommentText");
   if (modalDayKey) addDayComment(modalDayKey, ta.value);
   ta.value = "";
+});
+document.getElementById("generalCommentText").addEventListener("keydown", e=>{
+  if ((e.ctrlKey || e.metaKey) && e.key === "Enter"){
+    e.preventDefault();
+    document.getElementById("generalCommentBtn").click();
+  }
+});
+document.getElementById("dayCommentText").addEventListener("keydown", e=>{
+  if ((e.ctrlKey || e.metaKey) && e.key === "Enter"){
+    e.preventDefault();
+    document.getElementById("dayCommentBtn").click();
+  }
 });
 document.getElementById("modalCloseBtn").addEventListener("click", closeDayModal);
 document.getElementById("modalOverlay").addEventListener("click", (e)=>{
