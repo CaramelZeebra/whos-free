@@ -9,7 +9,7 @@
  * (see README.md for exact steps).
  */
 
-const ALLOWED_ORIGIN = "https://time.eliasro.de"; // or your custom domain, e.g. "https://www.eliasro.de"
+const ALLOWED_ORIGIN = "https://time.eliasro.de";
 const KV_KEY = "calendar-blob";
 
 function corsHeaders() {
