@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Who's Free?</title>
+<title>Elias (Un)Availability</title>
 <style>
   :root{
     --ink:#1b2430;
@@ -24,9 +24,9 @@
     font-family:"Iowan Old Style","Georgia",serif;
     min-height:100vh;
   }
-  .utility{font-family:"IBM Plex Mono","Menlo",monospace; letter-spacing:.02em;}
+  .mono{font-family:"IBM Plex Mono","Menlo",monospace; letter-spacing:.02em;}
 
-  /* ---------- Lock screen ---------- */
+  /* ---------- Lock / select screen ---------- */
   #lock{
     min-height:100vh;
     display:flex;
@@ -35,7 +35,7 @@
     padding:24px;
   }
   .lock-card{
-    max-width:380px;
+    max-width:400px;
     width:100%;
     text-align:center;
   }
@@ -48,20 +48,31 @@
     font-size:13px;color:var(--navy);
   }
   .lock-card h1{
-    font-size:1.6rem;
+    font-size:1.5rem;
     font-weight:500;
     margin:0 0 6px;
     letter-spacing:-0.01em;
   }
   .lock-card p{
     color:var(--navy-dim);
-    font-size:0.95rem;
-    margin:0 0 28px;
+    font-size:0.92rem;
+    margin:0 0 26px;
   }
-  #password{
+  .field{
+    text-align:left;
+    margin-bottom:12px;
+  }
+  .field label{
+    display:block;
+    font-family:"IBM Plex Mono",monospace;
+    font-size:0.7rem;
+    color:var(--navy-dim);
+    margin-bottom:5px;
+  }
+  .field input{
     width:100%;
-    padding:13px 14px;
-    font-size:1rem;
+    padding:12px 13px;
+    font-size:0.95rem;
     border:1.5px solid var(--line);
     border-radius:var(--radius);
     background:#fff;
@@ -69,16 +80,16 @@
     outline:none;
     transition:border-color .15s;
   }
-  #password:focus{border-color:var(--navy);}
+  .field input:focus{border-color:var(--navy);}
   #unlockBtn{
     width:100%;
-    margin-top:12px;
+    margin-top:6px;
     padding:13px;
     background:var(--navy);
     color:var(--paper);
     border:none;
     border-radius:var(--radius);
-    font-size:0.95rem;
+    font-size:0.92rem;
     font-family:"IBM Plex Mono",monospace;
     letter-spacing:.03em;
     cursor:pointer;
@@ -88,17 +99,26 @@
   #unlockBtn:disabled{opacity:.5;cursor:default;}
   #lockError{
     color:var(--coral);
-    font-size:0.85rem;
+    font-size:0.83rem;
     margin-top:14px;
     min-height:1.2em;
     font-family:"IBM Plex Mono",monospace;
   }
-  #firstRunNote{
-    margin-top:20px;
-    font-size:0.78rem;
-    color:var(--navy-dim);
-    line-height:1.5;
+  #createBlock{
+    display:none;
+    margin-top:6px;
+    padding-top:14px;
+    border-top:1px solid var(--line);
+  }
+  #createToggle, #adminToggle{
+    background:none;border:none;
     font-family:"IBM Plex Mono",monospace;
+    font-size:0.75rem;
+    color:var(--navy-dim);
+    text-decoration:underline;
+    cursor:pointer;
+    margin-top:16px;
+    display:block;
   }
 
   /* ---------- App ---------- */
@@ -113,13 +133,13 @@
     gap:10px;
   }
   header.top h1{
-    font-size:1.3rem;
+    font-size:1.25rem;
     font-weight:500;
     margin:0;
   }
-  header.top .who{
+  header.top .cal-name{
     font-family:"IBM Plex Mono",monospace;
-    font-size:0.8rem;
+    font-size:0.78rem;
     color:var(--navy-dim);
   }
   #lockAgain{
@@ -203,7 +223,8 @@
     transition:background .1s;
   }
   .day.empty{background:transparent; cursor:default;}
-  .day:not(.empty):hover{background:#efe9de;}
+  .day.past{background:#efece4; cursor:default;}
+  .day:not(.empty):not(.past):hover{background:#efe9de;}
   .day .num{
     font-family:"IBM Plex Mono",monospace;
     font-size:0.75rem;
@@ -271,20 +292,52 @@
 <div id="lock">
   <div class="lock-card">
     <div class="lock-mark">🔒</div>
-    <h1>Who's Free?</h1>
-    <p>Enter the shared password to unlock the calendar.</p>
-    <input id="password" type="password" placeholder="password" autocomplete="current-password">
-    <button id="unlockBtn">Unlock</button>
+    <h1>Elias (Un)Availability</h1>
+    <p>Enter a calendar name and its password to open it.</p>
+
+    <div class="field">
+      <label for="calName">calendar name</label>
+      <input id="calName" type="text" placeholder="e.g. summer-trip" autocomplete="off">
+    </div>
+    <div class="field">
+      <label for="password">password</label>
+      <input id="password" type="password" placeholder="password" autocomplete="current-password">
+    </div>
+    <button id="unlockBtn">Open</button>
     <div id="lockError"></div>
-    <div id="firstRunNote"></div>
+
+    <button id="createToggle">this calendar doesn't exist yet →</button>
+    <div id="createBlock">
+      <p class="mono" style="font-size:0.75rem; color:var(--navy-dim); text-align:left; margin:0 0 12px;">
+        To create a new calendar, prove you already have access to a
+        different one — its own secret never leaves your browser.
+      </p>
+      <div class="field">
+        <label for="proofName">name of a calendar you already use</label>
+        <input id="proofName" type="text" placeholder="e.g. summer-trip" autocomplete="off">
+      </div>
+      <div class="field">
+        <label for="proofPassword">its password</label>
+        <input id="proofPassword" type="password" placeholder="password" autocomplete="off">
+      </div>
+      <button id="createBtn">Create calendar</button>
+
+      <button id="adminToggle" style="margin-top:14px;">this is the first calendar ever — use admin token instead →</button>
+      <div id="adminBlock" style="display:none; margin-top:10px;">
+        <div class="field">
+          <label for="adminToken">admin token</label>
+          <input id="adminToken" type="password" placeholder="admin token" autocomplete="off">
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 
 <div id="app">
   <header class="top">
-    <h1>Who's Free?</h1>
-    <div class="who">
-      <button id="lockAgain">lock again</button>
+    <h1>Elias (Un)Availability</h1>
+    <div class="cal-name">
+      <span id="calNameLabel"></span> · <button id="lockAgain">lock again</button>
     </div>
   </header>
 
@@ -306,6 +359,7 @@
       <span><span class="swatch" style="background:var(--navy)"></span> your mark</span>
       <span><span class="swatch" style="background:var(--coral-dim)"></span> someone else</span>
       <span>click a day to toggle your unavailability</span>
+      <span>past days are locked and auto-cleared</span>
     </div>
   </main>
 </div>
@@ -314,80 +368,93 @@
 
 <script>
 /* ============================================================
-   CONFIG — set this to your deployed Cloudflare Worker URL
+   CONFIG
    ============================================================ */
-const WORKER_URL = "https://whosfree-calendar.eliasrode.workers.dev/blob";
+const WORKER_BASE = "https://elias-unavailability.eliasrode.workers.dev";
 
 /* ============================================================
-   Crypto: PBKDF2 -> AES-GCM. The server only ever sees the
-   base64 ciphertext produced here. Password never leaves
-   the browser.
+   Crypto helpers
    ============================================================ */
 const enc = new TextEncoder();
 const dec = new TextDecoder();
 
-async function deriveKey(password, salt){
-  const baseKey = await crypto.subtle.importKey(
-    "raw", enc.encode(password), "PBKDF2", false, ["deriveKey"]
-  );
-  return crypto.subtle.deriveKey(
-    { name:"PBKDF2", salt, iterations:250000, hash:"SHA-256" },
-    baseKey,
-    { name:"AES-GCM", length:256 },
-    false,
-    ["encrypt","decrypt"]
-  );
+function toHex(buf){
+  return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2,"0")).join("");
 }
-
 function b64(bytes){ return btoa(String.fromCharCode(...new Uint8Array(bytes))); }
 function unb64(str){ return Uint8Array.from(atob(str), c => c.charCodeAt(0)); }
+
+// Deterministic, password-derived, but keyed to a *purpose* string so the
+// same password produces different values for "which calendar" (slug),
+// "am I allowed to write" (writeAuthHash), and "encrypt the data" (below) —
+// compromising one doesn't help derive the others.
+async function deriveHex(password, purpose, byteLen = 32){
+  const saltBuf = await crypto.subtle.digest("SHA-256", enc.encode(purpose));
+  const baseKey = await crypto.subtle.importKey("raw", enc.encode(password), "PBKDF2", false, ["deriveBits"]);
+  const bits = await crypto.subtle.deriveBits(
+    { name:"PBKDF2", salt:new Uint8Array(saltBuf), iterations:150000, hash:"SHA-256" },
+    baseKey, byteLen*8
+  );
+  return toHex(bits);
+}
+
+async function deriveAesKey(password, salt){
+  const baseKey = await crypto.subtle.importKey("raw", enc.encode(password), "PBKDF2", false, ["deriveKey"]);
+  return crypto.subtle.deriveKey(
+    { name:"PBKDF2", salt, iterations:250000, hash:"SHA-256" },
+    baseKey, { name:"AES-GCM", length:256 }, false, ["encrypt","decrypt"]
+  );
+}
 
 async function encryptData(password, obj){
   const salt = crypto.getRandomValues(new Uint8Array(16));
   const iv = crypto.getRandomValues(new Uint8Array(12));
-  const key = await deriveKey(password, salt);
-  const ciphertext = await crypto.subtle.encrypt(
-    { name:"AES-GCM", iv }, key, enc.encode(JSON.stringify(obj))
-  );
-  return JSON.stringify({ salt:b64(salt), iv:b64(iv), data:b64(ciphertext) });
+  const key = await deriveAesKey(password, salt);
+  const ciphertext = await crypto.subtle.encrypt({ name:"AES-GCM", iv }, key, enc.encode(JSON.stringify(obj)));
+  return { salt:b64(salt), iv:b64(iv), data:b64(ciphertext) };
 }
 
-async function decryptData(password, blobStr){
-  const blob = JSON.parse(blobStr);
+async function decryptData(password, blob){
   const salt = unb64(blob.salt);
   const iv = unb64(blob.iv);
-  const key = await deriveKey(password, salt);
-  const plain = await crypto.subtle.decrypt(
-    { name:"AES-GCM", iv }, key, unb64(blob.data)
-  );
+  const key = await deriveAesKey(password, salt);
+  const plain = await crypto.subtle.decrypt({ name:"AES-GCM", iv }, key, unb64(blob.data));
   return JSON.parse(dec.decode(plain));
 }
 
 /* ============================================================
-   Storage: talk to the Cloudflare Worker
+   Storage: talk to the Worker / Durable Object
    ============================================================ */
-async function fetchBlob(){
-  const res = await fetch(WORKER_URL, { method:"GET" });
-  if (res.status === 404) return null; // nothing saved yet
-  if (!res.ok) throw new Error("Could not reach storage: " + res.status);
-  return res.text();
+async function fetchRecord(slug){
+  const res = await fetch(`${WORKER_BASE}/calendar/${slug}`);
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error("fetch failed: " + res.status);
+  return res.json(); // { blob, version }
 }
 
-async function saveBlob(blobStr){
-  const res = await fetch(WORKER_URL, {
+// Returns the new version on success, throws {conflict:true} on 409.
+async function putRecord(slug, { blob, expectedVersion, writeAuthHash, isCreate, adminToken, proofSlug, proofWriteAuthHash }){
+  const res = await fetch(`${WORKER_BASE}/calendar/${slug}`, {
     method:"PUT",
-    headers:{ "Content-Type":"text/plain" },
-    body: blobStr
+    headers:{ "Content-Type":"application/json" },
+    body: JSON.stringify({ blob, expectedVersion, writeAuthHash, isCreate, adminToken, proofSlug, proofWriteAuthHash })
   });
-  if (!res.ok) throw new Error("Could not save: " + res.status);
+  if (res.status === 409){ const e = new Error("conflict"); e.conflict = true; throw e; }
+  if (res.status === 403){ throw new Error("forbidden"); }
+  if (!res.ok) throw new Error("save failed: " + res.status);
+  return res.json(); // { version }
 }
 
 /* ============================================================
    App state
    ============================================================ */
 let PASSWORD = null;
-let DATA = { entries: {} }; // { "2026-08-14": ["Alice","Bob"] }
-let viewYear, viewMonth; // 0-indexed month
+let SLUG = null;
+let WRITE_AUTH = null;
+let CAL_NAME = null;
+let VERSION = null;
+let DATA = { entries: {} };
+let viewYear, viewMonth;
 
 function showStatus(msg){
   const el = document.getElementById("status");
@@ -397,52 +464,136 @@ function showStatus(msg){
   showStatus._t = setTimeout(()=>el.classList.remove("show"), 2200);
 }
 
-async function unlock(){
+function todayISO(){
+  const n = new Date();
+  return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,"0")}-${String(n.getDate()).padStart(2,"0")}`;
+}
+
+function wipePastDates(entries){
+  const cutoff = todayISO(); // keep today and future, drop anything before today
+  const kept = {};
+  for (const [key, names] of Object.entries(entries)){
+    if (key >= cutoff) kept[key] = names;
+  }
+  return kept;
+}
+
+/* ============================================================
+   Open / create flow
+   ============================================================ */
+async function openCalendar({ creating }){
+  const name = document.getElementById("calName").value.trim();
   const pw = document.getElementById("password").value;
   const errEl = document.getElementById("lockError");
-  const btn = document.getElementById("unlockBtn");
-  if (!pw){ errEl.textContent = "Enter a password."; return; }
+  const btn = creating ? document.getElementById("createBtn") : document.getElementById("unlockBtn");
+
+  if (!name || !pw){ errEl.textContent = "Enter a calendar name and password."; return; }
+
   btn.disabled = true;
   errEl.textContent = "";
   try{
-    const remote = await fetchBlob();
-    if (remote === null){
-      // no data yet — this password becomes the shared password
+    const slug = await deriveHex(pw, "slug::" + name, 16);
+    const writeAuthHash = await deriveHex(pw, "writeauth::" + name, 32);
+
+    let record = await fetchRecord(slug);
+
+    if (record === null){
+      if (!creating){
+        errEl.textContent = "No calendar found with that name + password.";
+        return;
+      }
+
+      const usingAdmin = document.getElementById("adminBlock").style.display === "block";
+      let proofSlug, proofWriteAuthHash, adminToken;
+
+      if (usingAdmin){
+        adminToken = document.getElementById("adminToken").value;
+      } else {
+        const proofName = document.getElementById("proofName").value.trim();
+        const proofPassword = document.getElementById("proofPassword").value;
+        if (!proofName || !proofPassword){
+          errEl.textContent = "Enter the name + password of a calendar you already use.";
+          return;
+        }
+        proofSlug = await deriveHex(proofPassword, "slug::" + proofName, 16);
+        proofWriteAuthHash = await deriveHex(proofPassword, "writeauth::" + proofName, 32);
+      }
+
+      const blob = await encryptData(pw, { entries: {} });
+      const result = await putRecord(slug, {
+        blob, expectedVersion: undefined, writeAuthHash,
+        isCreate: true, adminToken, proofSlug, proofWriteAuthHash,
+      });
+      VERSION = result.version;
       DATA = { entries: {} };
-      PASSWORD = pw;
-      const blobStr = await encryptData(PASSWORD, DATA);
-      await saveBlob(blobStr);
       showStatus("calendar created");
     } else {
-      DATA = await decryptData(pw, remote);
-      PASSWORD = pw;
+      DATA = await decryptData(pw, record.blob);
+      VERSION = record.version;
     }
-    const savedName = localStorage.getItem("whosfree_name");
+
+    PASSWORD = pw; SLUG = slug; WRITE_AUTH = writeAuthHash; CAL_NAME = name;
+
+    const savedName = localStorage.getItem("eu_myname");
     if (savedName) document.getElementById("myName").value = savedName;
+    document.getElementById("calNameLabel").textContent = name;
+
     document.getElementById("lock").style.display = "none";
     document.getElementById("app").style.display = "block";
     const now = new Date();
-    viewYear = now.getFullYear();
-    viewMonth = now.getMonth();
+    viewYear = now.getFullYear(); viewMonth = now.getMonth();
     render();
   } catch(e){
     console.error(e);
-    errEl.textContent = "Wrong password, or storage unreachable.";
+    if (e.message === "forbidden"){
+      errEl.textContent = "Not authorized to create — check the proof calendar's name/password (or admin token).";
+    } else {
+      errEl.textContent = "Wrong password, or storage unreachable.";
+    }
   } finally {
     btn.disabled = false;
   }
 }
 
 function relock(){
-  PASSWORD = null;
+  // Persist the "wipe past dates" cleanup before locking, so the server
+  // copy stays clean for the next person too.
+  (async () => {
+    try{
+      await saveWithRetry(current => ({ entries: wipePastDates(current.entries) }));
+    } catch(e){ console.error("cleanup on lock failed", e); }
+  })();
+
+  PASSWORD = null; SLUG = null; WRITE_AUTH = null; CAL_NAME = null; VERSION = null;
   DATA = { entries: {} };
   document.getElementById("password").value = "";
   document.getElementById("app").style.display = "none";
   document.getElementById("lock").style.display = "flex";
 }
 
-function dateKey(y,m,d){
-  return `${y}-${String(m+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+/* ============================================================
+   Conflict-safe save: always mutate the *latest* server state,
+   not a possibly-stale local copy, and retry on version conflicts.
+   ============================================================ */
+async function saveWithRetry(mutateFn, attempts = 5){
+  for (let i = 0; i < attempts; i++){
+    const record = await fetchRecord(SLUG);
+    const latest = record ? await decryptData(PASSWORD, record.blob) : { entries: {} };
+    const version = record ? record.version : 0;
+
+    const next = mutateFn(latest);
+    const blob = await encryptData(PASSWORD, next);
+    try{
+      const result = await putRecord(SLUG, { blob, expectedVersion: version, writeAuthHash: WRITE_AUTH });
+      DATA = next;
+      VERSION = result.version;
+      return;
+    } catch(e){
+      if (e.conflict){ continue; } // someone else saved first — retry against fresh state
+      throw e;
+    }
+  }
+  throw new Error("too many conflicting saves, please retry");
 }
 
 async function toggleDay(key){
@@ -452,15 +603,19 @@ async function toggleDay(key){
     document.getElementById("myName").focus();
     return;
   }
-  localStorage.setItem("whosfree_name", name);
-  const list = DATA.entries[key] || [];
-  const idx = list.indexOf(name);
-  if (idx >= 0) list.splice(idx,1); else list.push(name);
-  if (list.length) DATA.entries[key] = list; else delete DATA.entries[key];
-  render();
+  localStorage.setItem("eu_myname", name);
+
+  // Optimistically update the UI immediately, then reconcile with server.
   try{
-    const blobStr = await encryptData(PASSWORD, DATA);
-    await saveBlob(blobStr);
+    await saveWithRetry(latest => {
+      const entries = { ...latest.entries };
+      const list = entries[key] ? [...entries[key]] : [];
+      const idx = list.indexOf(name);
+      if (idx >= 0) list.splice(idx,1); else list.push(name);
+      if (list.length) entries[key] = list; else delete entries[key];
+      return { entries };
+    });
+    render();
     showStatus("saved");
   } catch(e){
     console.error(e);
@@ -468,23 +623,28 @@ async function toggleDay(key){
   }
 }
 
+/* ============================================================
+   Rendering
+   ============================================================ */
+function dateKey(y,m,d){
+  return `${y}-${String(m+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+}
+
 function render(){
   const first = new Date(viewYear, viewMonth, 1);
-  const startDow = first.getDay(); // 0=Sun
+  const startDow = first.getDay();
   const daysInMonth = new Date(viewYear, viewMonth+1, 0).getDate();
-  const label = first.toLocaleDateString(undefined, { month:"long", year:"numeric" });
-  document.getElementById("monthLabel").textContent = label;
+  document.getElementById("monthLabel").textContent = first.toLocaleDateString(undefined, { month:"long", year:"numeric" });
 
   const grid = document.getElementById("grid");
   grid.innerHTML = "";
   ["S","M","T","W","T","F","S"].forEach(d=>{
     const el = document.createElement("div");
-    el.className = "dow";
-    el.textContent = d;
+    el.className = "dow"; el.textContent = d;
     grid.appendChild(el);
   });
 
-  const todayKey = dateKey(new Date().getFullYear(), new Date().getMonth(), new Date().getDate());
+  const todayKey = todayISO();
   const myName = (document.getElementById("myName").value || "").trim();
 
   for (let i=0;i<startDow;i++){
@@ -494,8 +654,9 @@ function render(){
   }
   for (let d=1; d<=daysInMonth; d++){
     const key = dateKey(viewYear, viewMonth, d);
+    const isPast = key < todayKey;
     const el = document.createElement("div");
-    el.className = "day" + (key===todayKey ? " today" : "");
+    el.className = "day" + (key===todayKey ? " today" : "") + (isPast ? " past" : "");
     el.innerHTML = `<div class="num">${d}</div>`;
     const names = DATA.entries[key] || [];
     if (names.length){
@@ -509,25 +670,32 @@ function render(){
       });
       el.appendChild(tagsWrap);
     }
-    el.addEventListener("click", ()=>toggleDay(key));
+    if (!isPast) el.addEventListener("click", ()=>toggleDay(key));
     grid.appendChild(el);
   }
 }
 
-document.getElementById("unlockBtn").addEventListener("click", unlock);
-document.getElementById("password").addEventListener("keydown", e=>{ if(e.key==="Enter") unlock(); });
+/* ============================================================
+   Wiring
+   ============================================================ */
+document.getElementById("unlockBtn").addEventListener("click", ()=>openCalendar({creating:false}));
+document.getElementById("createBtn").addEventListener("click", ()=>openCalendar({creating:true}));
+document.getElementById("password").addEventListener("keydown", e=>{ if(e.key==="Enter") openCalendar({creating:false}); });
+document.getElementById("createToggle").addEventListener("click", ()=>{
+  const block = document.getElementById("createBlock");
+  block.style.display = block.style.display === "block" ? "none" : "block";
+});
+document.getElementById("adminToggle").addEventListener("click", ()=>{
+  const block = document.getElementById("adminBlock");
+  block.style.display = block.style.display === "block" ? "none" : "block";
+});
 document.getElementById("lockAgain").addEventListener("click", relock);
-document.getElementById("prevMonth").addEventListener("click", ()=>{
-  viewMonth--; if(viewMonth<0){viewMonth=11; viewYear--;} render();
-});
-document.getElementById("nextMonth").addEventListener("click", ()=>{
-  viewMonth++; if(viewMonth>11){viewMonth=0; viewYear++;} render();
-});
+document.getElementById("prevMonth").addEventListener("click", ()=>{ viewMonth--; if(viewMonth<0){viewMonth=11; viewYear--;} render(); });
+document.getElementById("nextMonth").addEventListener("click", ()=>{ viewMonth++; if(viewMonth>11){viewMonth=0; viewYear++;} render(); });
 document.getElementById("myName").addEventListener("input", render);
 
-if (WORKER_URL.includes("YOUR-WORKER-SUBDOMAIN")){
-  document.getElementById("firstRunNote").textContent =
-    "⚠ WORKER_URL isn't set yet — edit index.html before deploying.";
+if (WORKER_BASE.includes("YOUR-SUBDOMAIN")){
+  document.getElementById("lockError").textContent = "⚠ WORKER_BASE isn't set yet — edit index.html.";
 }
 </script>
 </body>

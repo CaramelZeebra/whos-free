@@ -1,7 +1,15 @@
-name = "whosfree-calendar"
+name = "elias-unavailability"
 main = "worker.js"
 compatibility_date = "2024-01-01"
 
-[[kv_namespaces]]
-binding = "CALENDAR_KV"
-id = "d57f75dcaf06481fa57cc88a58a05ca6"
+[[durable_objects.bindings]]
+name = "CALENDAR_DO"
+class_name = "CalendarStore"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["CalendarStore"]
+
+# Set the admin token (required to create new calendars) with:
+#   wrangler secret put ADMIN_TOKEN
+# Do NOT put it in this file — it must stay out of the repo.
