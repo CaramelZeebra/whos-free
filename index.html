@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Who's Free?</title>
+<style>
+  :root{
+    --ink:#1b2430;
+    --paper:#f6f3ee;
+    --line:#d8d2c4;
+    --navy:#26344a;
+    --navy-dim:#3d4f6b;
+    --coral:#c1543f;
+    --coral-dim:#e8c9c2;
+    --sage:#5c7a63;
+    --radius:3px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:"Iowan Old Style","Georgia",serif;
+    min-height:100vh;
+  }
+  .utility{font-family:"IBM Plex Mono","Menlo",monospace; letter-spacing:.02em;}
+
+  /* ---------- Lock screen ---------- */
+  #lock{
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:24px;
+  }
+  .lock-card{
+    max-width:380px;
+    width:100%;
+    text-align:center;
+  }
+  .lock-mark{
+    width:46px;height:46px;margin:0 auto 22px;
+    border:1.5px solid var(--navy);
+    border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    font-family:"IBM Plex Mono",monospace;
+    font-size:13px;color:var(--navy);
+  }
+  .lock-card h1{
+    font-size:1.6rem;
+    font-weight:500;
+    margin:0 0 6px;
+    letter-spacing:-0.01em;
+  }
+  .lock-card p{
+    color:var(--navy-dim);
+    font-size:0.95rem;
+    margin:0 0 28px;
+  }
+  #password{
+    width:100%;
+    padding:13px 14px;
+    font-size:1rem;
+    border:1.5px solid var(--line);
+    border-radius:var(--radius);
+    background:#fff;
+    font-family:"IBM Plex Mono",monospace;
+    outline:none;
+    transition:border-color .15s;
+  }
+  #password:focus{border-color:var(--navy);}
+  #unlockBtn{
+    width:100%;
+    margin-top:12px;
+    padding:13px;
+    background:var(--navy);
+    color:var(--paper);
+    border:none;
+    border-radius:var(--radius);
+    font-size:0.95rem;
+    font-family:"IBM Plex Mono",monospace;
+    letter-spacing:.03em;
+    cursor:pointer;
+    transition:background .15s;
+  }
+  #unlockBtn:hover{background:var(--navy-dim);}
+  #unlockBtn:disabled{opacity:.5;cursor:default;}
+  #lockError{
+    color:var(--coral);
+    font-size:0.85rem;
+    margin-top:14px;
+    min-height:1.2em;
+    font-family:"IBM Plex Mono",monospace;
+  }
+  #firstRunNote{
+    margin-top:20px;
+    font-size:0.78rem;
+    color:var(--navy-dim);
+    line-height:1.5;
+    font-family:"IBM Plex Mono",monospace;
+  }
+
+  /* ---------- App ---------- */
+  #app{display:none;}
+  header.top{
+    border-bottom:1.5px solid var(--ink);
+    padding:20px 28px;
+    display:flex;
+    align-items:baseline;
+    justify-content:space-between;
+    flex-wrap:wrap;
+    gap:10px;
+  }
+  header.top h1{
+    font-size:1.3rem;
+    font-weight:500;
+    margin:0;
+  }
+  header.top .who{
+    font-family:"IBM Plex Mono",monospace;
+    font-size:0.8rem;
+    color:var(--navy-dim);
+  }
+  #lockAgain{
+    background:none;border:none;
+    font-family:"IBM Plex Mono",monospace;
+    font-size:0.78rem;
+    color:var(--navy-dim);
+    cursor:pointer;
+    text-decoration:underline;
+  }
+
+  main{max-width:760px; margin:0 auto; padding:28px 20px 80px;}
+
+  .name-row{
+    display:flex;
+    gap:10px;
+    align-items:center;
+    margin-bottom:22px;
+    flex-wrap:wrap;
+  }
+  .name-row label{
+    font-family:"IBM Plex Mono",monospace;
+    font-size:0.78rem;
+    color:var(--navy-dim);
+  }
+  #myName{
+    padding:9px 12px;
+    border:1.5px solid var(--line);
+    border-radius:var(--radius);
+    font-family:"IBM Plex Mono",monospace;
+    font-size:0.85rem;
+    background:#fff;
+    min-width:160px;
+  }
+
+  .month-nav{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    margin-bottom:14px;
+  }
+  .month-nav button{
+    background:none;
+    border:1.5px solid var(--ink);
+    border-radius:50%;
+    width:32px;height:32px;
+    cursor:pointer;
+    font-size:1rem;
+    line-height:1;
+    color:var(--ink);
+  }
+  .month-nav h2{
+    font-size:1.15rem;
+    font-weight:500;
+    margin:0;
+  }
+
+  .grid{
+    display:grid;
+    grid-template-columns:repeat(7,1fr);
+    border-top:1.5px solid var(--line);
+    border-left:1.5px solid var(--line);
+  }
+  .grid .dow{
+    font-family:"IBM Plex Mono",monospace;
+    font-size:0.68rem;
+    color:var(--navy-dim);
+    text-align:center;
+    padding:6px 0;
+    border-right:1.5px solid var(--line);
+    border-bottom:1.5px solid var(--line);
+  }
+  .day{
+    min-height:84px;
+    border-right:1.5px solid var(--line);
+    border-bottom:1.5px solid var(--line);
+    padding:6px;
+    cursor:pointer;
+    position:relative;
+    background:#fff;
+    transition:background .1s;
+  }
+  .day.empty{background:transparent; cursor:default;}
+  .day:not(.empty):hover{background:#efe9de;}
+  .day .num{
+    font-family:"IBM Plex Mono",monospace;
+    font-size:0.75rem;
+    color:var(--navy-dim);
+  }
+  .day.today .num{
+    color:var(--navy);
+    font-weight:700;
+    text-decoration:underline;
+  }
+  .tags{
+    display:flex;
+    flex-wrap:wrap;
+    gap:3px;
+    margin-top:5px;
+  }
+  .tag{
+    font-family:"IBM Plex Mono",monospace;
+    font-size:0.62rem;
+    background:var(--coral-dim);
+    color:#7a2f20;
+    padding:1px 5px;
+    border-radius:2px;
+    white-space:nowrap;
+  }
+  .tag.mine{
+    background:var(--navy);
+    color:var(--paper);
+  }
+
+  .legend{
+    display:flex;
+    gap:18px;
+    margin-top:18px;
+    font-family:"IBM Plex Mono",monospace;
+    font-size:0.72rem;
+    color:var(--navy-dim);
+    flex-wrap:wrap;
+  }
+  .legend span{display:flex; align-items:center; gap:6px;}
+  .swatch{width:10px;height:10px;border-radius:2px;display:inline-block;}
+
+  #status{
+    position:fixed;
+    bottom:18px;right:22px;
+    font-family:"IBM Plex Mono",monospace;
+    font-size:0.72rem;
+    color:var(--navy-dim);
+    background:var(--paper);
+    padding:6px 10px;
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    opacity:0;
+    transition:opacity .3s;
+  }
+  #status.show{opacity:1;}
+
+  @media (prefers-reduced-motion: reduce){
+    *{transition:none !important;}
+  }
+</style>
+</head>
+<body>
+
+<div id="lock">
+  <div class="lock-card">
+    <div class="lock-mark">🔒</div>
+    <h1>Who's Free?</h1>
+    <p>Enter the shared password to unlock the calendar.</p>
+    <input id="password" type="password" placeholder="password" autocomplete="current-password">
+    <button id="unlockBtn">Unlock</button>
+    <div id="lockError"></div>
+    <div id="firstRunNote"></div>
+  </div>
+</div>
+
+<div id="app">
+  <header class="top">
+    <h1>Who's Free?</h1>
+    <div class="who">
+      <button id="lockAgain">lock again</button>
+    </div>
+  </header>
+
+  <main>
+    <div class="name-row">
+      <label for="myName">marking as:</label>
+      <input id="myName" type="text" placeholder="your name" maxlength="20">
+    </div>
+
+    <div class="month-nav">
+      <button id="prevMonth">‹</button>
+      <h2 id="monthLabel"></h2>
+      <button id="nextMonth">›</button>
+    </div>
+
+    <div class="grid" id="grid"></div>
+
+    <div class="legend">
+      <span><span class="swatch" style="background:var(--navy)"></span> your mark</span>
+      <span><span class="swatch" style="background:var(--coral-dim)"></span> someone else</span>
+      <span>click a day to toggle your unavailability</span>
+    </div>
+  </main>
+</div>
+
+<div id="status"></div>
+
+<script>
+/* ============================================================
+   CONFIG — set this to your deployed Cloudflare Worker URL
+   ============================================================ */
+const WORKER_URL = "https://whosfree-calendar.eliasrode.workers.dev";
+
+/* ============================================================
+   Crypto: PBKDF2 -> AES-GCM. The server only ever sees the
+   base64 ciphertext produced here. Password never leaves
+   the browser.
+   ============================================================ */
+const enc = new TextEncoder();
+const dec = new TextDecoder();
+
+async function deriveKey(password, salt){
+  const baseKey = await crypto.subtle.importKey(
+    "raw", enc.encode(password), "PBKDF2", false, ["deriveKey"]
+  );
+  return crypto.subtle.deriveKey(
+    { name:"PBKDF2", salt, iterations:250000, hash:"SHA-256" },
+    baseKey,
+    { name:"AES-GCM", length:256 },
+    false,
+    ["encrypt","decrypt"]
+  );
+}
+
+function b64(bytes){ return btoa(String.fromCharCode(...new Uint8Array(bytes))); }
+function unb64(str){ return Uint8Array.from(atob(str), c => c.charCodeAt(0)); }
+
+async function encryptData(password, obj){
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const key = await deriveKey(password, salt);
+  const ciphertext = await crypto.subtle.encrypt(
+    { name:"AES-GCM", iv }, key, enc.encode(JSON.stringify(obj))
+  );
+  return JSON.stringify({ salt:b64(salt), iv:b64(iv), data:b64(ciphertext) });
+}
+
+async function decryptData(password, blobStr){
+  const blob = JSON.parse(blobStr);
+  const salt = unb64(blob.salt);
+  const iv = unb64(blob.iv);
+  const key = await deriveKey(password, salt);
+  const plain = await crypto.subtle.decrypt(
+    { name:"AES-GCM", iv }, key, unb64(blob.data)
+  );
+  return JSON.parse(dec.decode(plain));
+}
+
+/* ============================================================
+   Storage: talk to the Cloudflare Worker
+   ============================================================ */
+async function fetchBlob(){
+  const res = await fetch(WORKER_URL, { method:"GET" });
+  if (res.status === 404) return null; // nothing saved yet
+  if (!res.ok) throw new Error("Could not reach storage: " + res.status);
+  return res.text();
+}
+
+async function saveBlob(blobStr){
+  const res = await fetch(WORKER_URL, {
+    method:"PUT",
+    headers:{ "Content-Type":"text/plain" },
+    body: blobStr
+  });
+  if (!res.ok) throw new Error("Could not save: " + res.status);
+}
+
+/* ============================================================
+   App state
+   ============================================================ */
+let PASSWORD = null;
+let DATA = { entries: {} }; // { "2026-08-14": ["Alice","Bob"] }
+let viewYear, viewMonth; // 0-indexed month
+
+function showStatus(msg){
+  const el = document.getElementById("status");
+  el.textContent = msg;
+  el.classList.add("show");
+  clearTimeout(showStatus._t);
+  showStatus._t = setTimeout(()=>el.classList.remove("show"), 2200);
+}
+
+async function unlock(){
+  const pw = document.getElementById("password").value;
+  const errEl = document.getElementById("lockError");
+  const btn = document.getElementById("unlockBtn");
+  if (!pw){ errEl.textContent = "Enter a password."; return; }
+  btn.disabled = true;
+  errEl.textContent = "";
+  try{
+    const remote = await fetchBlob();
+    if (remote === null){
+      // no data yet — this password becomes the shared password
+      DATA = { entries: {} };
+      PASSWORD = pw;
+      const blobStr = await encryptData(PASSWORD, DATA);
+      await saveBlob(blobStr);
+      showStatus("calendar created");
+    } else {
+      DATA = await decryptData(pw, remote);
+      PASSWORD = pw;
+    }
+    const savedName = localStorage.getItem("whosfree_name");
+    if (savedName) document.getElementById("myName").value = savedName;
+    document.getElementById("lock").style.display = "none";
+    document.getElementById("app").style.display = "block";
+    const now = new Date();
+    viewYear = now.getFullYear();
+    viewMonth = now.getMonth();
+    render();
+  } catch(e){
+    console.error(e);
+    errEl.textContent = "Wrong password, or storage unreachable.";
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function relock(){
+  PASSWORD = null;
+  DATA = { entries: {} };
+  document.getElementById("password").value = "";
+  document.getElementById("app").style.display = "none";
+  document.getElementById("lock").style.display = "flex";
+}
+
+function dateKey(y,m,d){
+  return `${y}-${String(m+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+}
+
+async function toggleDay(key){
+  const name = (document.getElementById("myName").value || "").trim();
+  if (!name){
+    showStatus("enter your name first");
+    document.getElementById("myName").focus();
+    return;
+  }
+  localStorage.setItem("whosfree_name", name);
+  const list = DATA.entries[key] || [];
+  const idx = list.indexOf(name);
+  if (idx >= 0) list.splice(idx,1); else list.push(name);
+  if (list.length) DATA.entries[key] = list; else delete DATA.entries[key];
+  render();
+  try{
+    const blobStr = await encryptData(PASSWORD, DATA);
+    await saveBlob(blobStr);
+    showStatus("saved");
+  } catch(e){
+    console.error(e);
+    showStatus("save failed — check connection");
+  }
+}
+
+function render(){
+  const first = new Date(viewYear, viewMonth, 1);
+  const startDow = first.getDay(); // 0=Sun
+  const daysInMonth = new Date(viewYear, viewMonth+1, 0).getDate();
+  const label = first.toLocaleDateString(undefined, { month:"long", year:"numeric" });
+  document.getElementById("monthLabel").textContent = label;
+
+  const grid = document.getElementById("grid");
+  grid.innerHTML = "";
+  ["S","M","T","W","T","F","S"].forEach(d=>{
+    const el = document.createElement("div");
+    el.className = "dow";
+    el.textContent = d;
+    grid.appendChild(el);
+  });
+
+  const todayKey = dateKey(new Date().getFullYear(), new Date().getMonth(), new Date().getDate());
+  const myName = (document.getElementById("myName").value || "").trim();
+
+  for (let i=0;i<startDow;i++){
+    const el = document.createElement("div");
+    el.className = "day empty";
+    grid.appendChild(el);
+  }
+  for (let d=1; d<=daysInMonth; d++){
+    const key = dateKey(viewYear, viewMonth, d);
+    const el = document.createElement("div");
+    el.className = "day" + (key===todayKey ? " today" : "");
+    el.innerHTML = `<div class="num">${d}</div>`;
+    const names = DATA.entries[key] || [];
+    if (names.length){
+      const tagsWrap = document.createElement("div");
+      tagsWrap.className = "tags";
+      names.forEach(n=>{
+        const t = document.createElement("span");
+        t.className = "tag" + (n===myName ? " mine" : "");
+        t.textContent = n;
+        tagsWrap.appendChild(t);
+      });
+      el.appendChild(tagsWrap);
+    }
+    el.addEventListener("click", ()=>toggleDay(key));
+    grid.appendChild(el);
+  }
+}
+
+document.getElementById("unlockBtn").addEventListener("click", unlock);
+document.getElementById("password").addEventListener("keydown", e=>{ if(e.key==="Enter") unlock(); });
+document.getElementById("lockAgain").addEventListener("click", relock);
+document.getElementById("prevMonth").addEventListener("click", ()=>{
+  viewMonth--; if(viewMonth<0){viewMonth=11; viewYear--;} render();
+});
+document.getElementById("nextMonth").addEventListener("click", ()=>{
+  viewMonth++; if(viewMonth>11){viewMonth=0; viewYear++;} render();
+});
+document.getElementById("myName").addEventListener("input", render);
+
+if (WORKER_URL.includes("YOUR-WORKER-SUBDOMAIN")){
+  document.getElementById("firstRunNote").textContent =
+    "⚠ WORKER_URL isn't set yet — edit index.html before deploying.";
+}
+</script>
+</body>
+</html>

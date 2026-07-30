@@ -1,0 +1,7 @@
+name = "whosfree-calendar"
+main = "worker.js"
+compatibility_date = "2024-01-01"
+
+[[kv_namespaces]]
+binding = "CALENDAR_KV"
+id = "d57f75dcaf06481fa57cc88a58a05ca6"
