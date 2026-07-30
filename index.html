@@ -613,12 +613,20 @@ function wipePastDates(entries){
 // Old saved blobs won't have a `comments` field yet — default it rather
 // than erroring or touching existing `entries` data. Purely additive.
 function ensureShape(data){
+  const days = (data.comments && data.comments.days) || {};
+  const general = (data.comments && data.comments.general) || [];
+  // Backfill ids for comments saved before the delete feature existed.
+  // Deterministic (not random) so the same comment gets the same id every
+  // time this runs — saves/deletes re-fetch and re-normalize independently,
+  // so a random id here would drift and break matching between calls.
+  const legacyId = c => `legacy-${c.ts}-${c.name}`;
+  for (const key of Object.keys(days)){
+    days[key] = days[key].map(c => c.id ? c : { ...c, id: legacyId(c) });
+  }
+  const generalFixed = general.map(c => c.id ? c : { ...c, id: legacyId(c) });
   return {
     entries: data.entries || {},
-    comments: {
-      days: (data.comments && data.comments.days) || {},
-      general: (data.comments && data.comments.general) || [],
-    },
+    comments: { days, general: generalFixed },
   };
 }
 
