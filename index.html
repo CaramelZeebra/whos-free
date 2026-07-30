@@ -267,6 +267,105 @@
   .legend span{display:flex; align-items:center; gap:6px;}
   .swatch{width:10px;height:10px;border-radius:2px;display:inline-block;}
 
+  .comment-badge{
+    position:absolute;
+    top:5px; right:5px;
+    font-family:"IBM Plex Mono",monospace;
+    font-size:0.6rem;
+    background:var(--navy);
+    color:var(--paper);
+    border-radius:8px;
+    padding:1px 5px;
+    cursor:pointer;
+  }
+  .comment-badge.add{
+    background:transparent;
+    color:var(--line);
+    border:1px solid var(--line);
+  }
+  .day:hover .comment-badge.add{ color:var(--navy-dim); border-color:var(--navy-dim); }
+
+  #modalOverlay{
+    display:none;
+    position:fixed; inset:0;
+    background:rgba(27,36,48,0.45);
+    align-items:center; justify-content:center;
+    padding:20px;
+    z-index:50;
+  }
+  #modalOverlay.show{ display:flex; }
+  .modal{
+    background:var(--paper);
+    border:1.5px solid var(--ink);
+    border-radius:var(--radius);
+    max-width:440px; width:100%;
+    max-height:80vh;
+    display:flex; flex-direction:column;
+    padding:20px;
+  }
+  .modal h3{ margin:0 0 4px; font-size:1.05rem; font-weight:500; }
+  .modal .disclaimer{
+    font-family:"IBM Plex Mono",monospace;
+    font-size:0.68rem;
+    color:var(--navy-dim);
+    margin:0 0 14px;
+  }
+  .comment-list{
+    overflow-y:auto;
+    flex:1;
+    margin-bottom:12px;
+    display:flex; flex-direction:column; gap:8px;
+  }
+  .comment-item{
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:8px 10px;
+    background:#fff;
+  }
+  .comment-item .who{
+    font-family:"IBM Plex Mono",monospace;
+    font-size:0.68rem;
+    color:var(--navy-dim);
+    margin-bottom:3px;
+  }
+  .comment-item .text{ font-size:0.9rem; }
+  .comment-empty{
+    font-family:"IBM Plex Mono",monospace;
+    font-size:0.75rem;
+    color:var(--navy-dim);
+  }
+  .comment-add-row{ display:flex; gap:8px; }
+  .comment-add-row textarea{
+    flex:1;
+    resize:none;
+    padding:9px 10px;
+    border:1.5px solid var(--line);
+    border-radius:var(--radius);
+    font-family:"Iowan Old Style","Georgia",serif;
+    font-size:0.9rem;
+    min-height:44px;
+  }
+  .comment-add-row button, .modal-close{
+    padding:9px 14px;
+    background:var(--navy);
+    color:var(--paper);
+    border:none;
+    border-radius:var(--radius);
+    font-family:"IBM Plex Mono",monospace;
+    font-size:0.8rem;
+    cursor:pointer;
+  }
+  .modal-close{
+    background:none; color:var(--navy-dim);
+    text-decoration:underline;
+    align-self:flex-end;
+    margin-top:12px;
+    padding:4px;
+  }
+
+  #generalComments{ margin-top:36px; }
+  #generalComments h2{ font-size:1.05rem; font-weight:500; margin:0 0 4px; }
+
   #status{
     position:fixed;
     bottom:18px;right:22px;
@@ -361,7 +460,30 @@
       <span>click a day to toggle your unavailability</span>
       <span>past days are locked and auto-cleared</span>
     </div>
+
+    <div id="generalComments">
+      <h2>General comments</h2>
+      <p class="disclaimer mono">Names here are self-reported — anyone can type any name, so treat identity as unverified.</p>
+      <div class="comment-list" id="generalCommentList"></div>
+      <div class="comment-add-row">
+        <textarea id="generalCommentText" placeholder="Add a comment..."></textarea>
+        <button id="generalCommentBtn">Post</button>
+      </div>
+    </div>
   </main>
+</div>
+
+<div id="modalOverlay">
+  <div class="modal">
+    <h3 id="modalDayTitle"></h3>
+    <p class="disclaimer mono">Names here are self-reported — anyone can type any name, so treat identity as unverified.</p>
+    <div class="comment-list" id="dayCommentList"></div>
+    <div class="comment-add-row">
+      <textarea id="dayCommentText" placeholder="Add a comment for this day..."></textarea>
+      <button id="dayCommentBtn">Post</button>
+    </div>
+    <button class="modal-close" id="modalCloseBtn">close</button>
+  </div>
 </div>
 
 <div id="status"></div>
@@ -478,6 +600,18 @@ function wipePastDates(entries){
   return kept;
 }
 
+// Old saved blobs won't have a `comments` field yet — default it rather
+// than erroring or touching existing `entries` data. Purely additive.
+function ensureShape(data){
+  return {
+    entries: data.entries || {},
+    comments: {
+      days: (data.comments && data.comments.days) || {},
+      general: (data.comments && data.comments.general) || [],
+    },
+  };
+}
+
 /* ============================================================
    Open / create flow
    ============================================================ */
@@ -525,10 +659,10 @@ async function openCalendar({ creating }){
         isCreate: true, adminToken, proofSlug, proofWriteAuthHash,
       });
       VERSION = result.version;
-      DATA = { entries: {} };
+      DATA = ensureShape({ entries: {} });
       showStatus("calendar created");
     } else {
-      DATA = await decryptData(pw, record.blob);
+      DATA = ensureShape(await decryptData(pw, record.blob));
       VERSION = record.version;
     }
 
@@ -560,7 +694,7 @@ function relock(){
   // copy stays clean for the next person too.
   (async () => {
     try{
-      await saveWithRetry(current => ({ entries: wipePastDates(current.entries) }));
+      await saveWithRetry(current => ({ entries: wipePastDates(current.entries), comments: current.comments }));
     } catch(e){ console.error("cleanup on lock failed", e); }
   })();
 
@@ -578,7 +712,7 @@ function relock(){
 async function saveWithRetry(mutateFn, attempts = 5){
   for (let i = 0; i < attempts; i++){
     const record = await fetchRecord(SLUG);
-    const latest = record ? await decryptData(PASSWORD, record.blob) : { entries: {} };
+    const latest = record ? ensureShape(await decryptData(PASSWORD, record.blob)) : { entries: {}, comments: { days:{}, general:[] } };
     const version = record ? record.version : 0;
 
     const next = mutateFn(latest);
@@ -613,7 +747,7 @@ async function toggleDay(key){
       const idx = list.indexOf(name);
       if (idx >= 0) list.splice(idx,1); else list.push(name);
       if (list.length) entries[key] = list; else delete entries[key];
-      return { entries };
+      return { entries, comments: latest.comments };
     });
     render();
     showStatus("saved");
@@ -623,9 +757,100 @@ async function toggleDay(key){
   }
 }
 
-/* ============================================================
-   Rendering
-   ============================================================ */
+async function addDayComment(key, text){
+  const name = (document.getElementById("myName").value || "").trim();
+  if (!name){ showStatus("enter your name first"); document.getElementById("myName").focus(); return; }
+  if (!text.trim()) return;
+  localStorage.setItem("eu_myname", name);
+  try{
+    await saveWithRetry(latest => {
+      const days = { ...latest.comments.days };
+      const list = days[key] ? [...days[key]] : [];
+      list.push({ name, text: text.trim(), ts: Date.now() });
+      days[key] = list;
+      return { entries: latest.entries, comments: { days, general: latest.comments.general } };
+    });
+    renderDayModal(key);
+    render();
+    showStatus("comment added");
+  } catch(e){ console.error(e); showStatus("save failed — check connection"); }
+}
+
+async function addGeneralComment(text){
+  const name = (document.getElementById("myName").value || "").trim();
+  if (!name){ showStatus("enter your name first"); document.getElementById("myName").focus(); return; }
+  if (!text.trim()) return;
+  localStorage.setItem("eu_myname", name);
+  try{
+    await saveWithRetry(latest => {
+      const general = [...latest.comments.general, { name, text: text.trim(), ts: Date.now() }];
+      return { entries: latest.entries, comments: { days: latest.comments.days, general } };
+    });
+    renderGeneralComments();
+    showStatus("comment added");
+  } catch(e){ console.error(e); showStatus("save failed — check connection"); }
+}
+
+let modalDayKey = null;
+
+function fmtTs(ts){
+  return new Date(ts).toLocaleString(undefined, { month:"short", day:"numeric", hour:"numeric", minute:"2-digit" });
+}
+
+function commentItemHtml(c){
+  const div = document.createElement("div");
+  div.className = "comment-item";
+  const who = document.createElement("div");
+  who.className = "who";
+  who.textContent = `${c.name} · ${fmtTs(c.ts)}`;
+  const text = document.createElement("div");
+  text.className = "text";
+  text.textContent = c.text;
+  div.appendChild(who); div.appendChild(text);
+  return div;
+}
+
+function openDayModal(key){
+  modalDayKey = key;
+  const d = new Date(key + "T00:00:00");
+  document.getElementById("modalDayTitle").textContent = d.toLocaleDateString(undefined, { weekday:"long", month:"long", day:"numeric" });
+  document.getElementById("dayCommentText").value = "";
+  renderDayModal(key);
+  document.getElementById("modalOverlay").classList.add("show");
+}
+
+function renderDayModal(key){
+  const list = document.getElementById("dayCommentList");
+  list.innerHTML = "";
+  const comments = DATA.comments.days[key] || [];
+  if (!comments.length){
+    const empty = document.createElement("div");
+    empty.className = "comment-empty";
+    empty.textContent = "No comments yet.";
+    list.appendChild(empty);
+  } else {
+    comments.forEach(c => list.appendChild(commentItemHtml(c)));
+  }
+}
+
+function closeDayModal(){
+  document.getElementById("modalOverlay").classList.remove("show");
+  modalDayKey = null;
+}
+
+function renderGeneralComments(){
+  const list = document.getElementById("generalCommentList");
+  list.innerHTML = "";
+  const comments = DATA.comments.general;
+  if (!comments.length){
+    const empty = document.createElement("div");
+    empty.className = "comment-empty";
+    empty.textContent = "No comments yet.";
+    list.appendChild(empty);
+  } else {
+    comments.forEach(c => list.appendChild(commentItemHtml(c)));
+  }
+}
 function dateKey(y,m,d){
   return `${y}-${String(m+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
 }
@@ -671,8 +896,18 @@ function render(){
       el.appendChild(tagsWrap);
     }
     if (!isPast) el.addEventListener("click", ()=>toggleDay(key));
+
+    const dayComments = DATA.comments.days[key] || [];
+    const badge = document.createElement("div");
+    badge.className = "comment-badge" + (dayComments.length ? "" : " add");
+    badge.textContent = dayComments.length ? `💬${dayComments.length}` : "💬";
+    badge.title = "comments for this day";
+    badge.addEventListener("click", (e)=>{ e.stopPropagation(); openDayModal(key); });
+    el.appendChild(badge);
+
     grid.appendChild(el);
   }
+  renderGeneralComments();
 }
 
 /* ============================================================
@@ -693,6 +928,21 @@ document.getElementById("lockAgain").addEventListener("click", relock);
 document.getElementById("prevMonth").addEventListener("click", ()=>{ viewMonth--; if(viewMonth<0){viewMonth=11; viewYear--;} render(); });
 document.getElementById("nextMonth").addEventListener("click", ()=>{ viewMonth++; if(viewMonth>11){viewMonth=0; viewYear++;} render(); });
 document.getElementById("myName").addEventListener("input", render);
+
+document.getElementById("generalCommentBtn").addEventListener("click", ()=>{
+  const ta = document.getElementById("generalCommentText");
+  addGeneralComment(ta.value);
+  ta.value = "";
+});
+document.getElementById("dayCommentBtn").addEventListener("click", ()=>{
+  const ta = document.getElementById("dayCommentText");
+  if (modalDayKey) addDayComment(modalDayKey, ta.value);
+  ta.value = "";
+});
+document.getElementById("modalCloseBtn").addEventListener("click", closeDayModal);
+document.getElementById("modalOverlay").addEventListener("click", (e)=>{
+  if (e.target.id === "modalOverlay") closeDayModal();
+});
 
 if (WORKER_BASE.includes("YOUR-SUBDOMAIN")){
   document.getElementById("lockError").textContent = "⚠ WORKER_BASE isn't set yet — edit index.html.";
